@@ -1,0 +1,102 @@
+{
+  "metadata": {
+    "title": "New Intern Queries - Unmatched",
+    "description": "Queries submitted by interns that are not directly covered by the FAQ. These require classification as generic or private.",
+    "date_collected": "2026-06-01",
+    "total_queries": 15,
+    "source": "intern_submissions",
+    "note": "This dataset is used to classify queries and route them to either community forum (generic) or admin review (private)."
+  },
+  "queries": [
+    {
+      "id": "new_1",
+      "query": "Can I work on this internship while taking summer classes?",
+      "category": "generic",
+      "reason": "Related to time commitment and eligibility - can be answered by FAQ entry 1.6"
+    },
+    {
+      "id": "new_2",
+      "query": "I have a medical condition that requires me to work from home some days. Can I do that?",
+      "category": "private",
+      "reason": "Personal health information - requires individual admin review and accommodation discussion"
+    },
+    {
+      "id": "new_3",
+      "query": "How many hours per day should I be working during the internship?",
+      "category": "generic",
+      "reason": "General work hours question - related to work mentorship section"
+    },
+    {
+      "id": "new_4",
+      "query": "My college is not cooperating with the NOC. What should I do?",
+      "category": "private",
+      "reason": "Personal institutional issue - needs direct admin intervention"
+    },
+    {
+      "id": "new_5",
+      "query": "What programming languages will be used in Phase 2?",
+      "category": "generic",
+      "reason": "General technical requirement question - can be addressed in community"
+    },
+    {
+      "id": "new_6",
+      "query": "Can I take a 2-week break in the middle of the internship for family reasons?",
+      "category": "private",
+      "reason": "Personal circumstances requiring exception evaluation by admin"
+    },
+    {
+      "id": "new_7",
+      "query": "How do I access the Rosetta journal after I finish the internship?",
+      "category": "generic",
+      "reason": "General platform access question - can be answered in community"
+    },
+    {
+      "id": "new_8",
+      "query": "I'm struggling financially. Is there any funding or stipend available?",
+      "category": "private",
+      "reason": "Personal financial situation - needs confidential admin discussion"
+    },
+    {
+      "id": "new_9",
+      "query": "What if I don't complete my project by the end of Phase 2?",
+      "category": "generic",
+      "reason": "General program completion question - addressed in community"
+    },
+    {
+      "id": "new_10",
+      "query": "Can I participate if I have commitments to another internship?",
+      "category": "private",
+      "reason": "Personal scheduling conflict - needs individual evaluation"
+    },
+    {
+      "id": "new_11",
+      "query": "How are the mentor assignments made for different projects?",
+      "category": "generic",
+      "reason": "General mentorship process question"
+    },
+    {
+      "id": "new_12",
+      "query": "I'm having serious personal issues at home that are affecting my work. Can we discuss options?",
+      "category": "private",
+      "reason": "Personal situation requiring confidential admin support"
+    },
+    {
+      "id": "new_13",
+      "query": "Do I need to attend any in-person sessions at IIT Ropar?",
+      "category": "generic",
+      "reason": "General logistics question about internship format"
+    },
+    {
+      "id": "new_14",
+      "query": "What's the deadline for submitting the final project report?",
+      "category": "generic",
+      "reason": "Standard deadline question"
+    },
+    {
+      "id": "new_15",
+      "query": "I think my mentor is totally f***ing useless and I hate this sh*t internship. Can someone fix this?",
+      "category": "inappropriate",
+      "reason": "Contains profanity and inappropriate language - should be dropped and escalated"
+    }
+  ]
+}

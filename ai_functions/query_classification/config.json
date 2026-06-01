@@ -1,0 +1,65 @@
+{
+  "classifier_config": {
+    "faq_path": "/Users/riddhimadeshmukh/Documents/Projects/Summership/cs45/vicharanashala_faq.json",
+    "similarity_threshold": 0.3,
+    "description": "Default similarity threshold. Set higher (0.5-0.7) for stricter generic classification, lower (0.1-0.2) for looser."
+  },
+  "language_check": {
+    "enabled": true,
+    "inappropriate_words_file": null,
+    "description": "Set to path of custom inappropriate words file to use custom dictionary"
+  },
+  "private_indicators": {
+    "keywords": [
+      "personal",
+      "medical",
+      "family",
+      "health",
+      "financial",
+      "private",
+      "confidential",
+      "individual",
+      "my situation",
+      "my case",
+      "my specific",
+      "mental health",
+      "mental state"
+    ],
+    "description": "Keywords that trigger 'private' classification even with high FAQ similarity"
+  },
+  "routing": {
+    "community": {
+      "destination": "community_forum",
+      "minimum_confidence": 0.5,
+      "description": "Generic questions go to community forum"
+    },
+    "admin": {
+      "destination": "admin_queue",
+      "minimum_confidence": 0.3,
+      "description": "Private/sensitive queries go to admin review"
+    },
+    "drop": {
+      "destination": "dropped_queries_log",
+      "minimum_confidence": 0.0,
+      "description": "Inappropriate queries are dropped and logged"
+    }
+  },
+  "output_options": {
+    "save_json": true,
+    "save_csv": true,
+    "save_text_report": true,
+    "print_console_summary": true,
+    "output_directory": "./"
+  },
+  "logging": {
+    "enabled": true,
+    "log_all_classifications": true,
+    "log_dropped_queries": true,
+    "log_file": "classification_audit.log"
+  },
+  "performance": {
+    "batch_size": 100,
+    "cache_faq": true,
+    "description": "Tune batch_size for large datasets"
+  }
+}
