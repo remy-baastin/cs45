@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { AiModule } from './ai/ai.module';
 import { FaqsModule } from './faqs/faqs.module';
 import { QuestionsModule } from './questions/questions.module';
 import { AdminModule } from './admin/admin.module';
+import { AiSearchModule } from './ai-search/ai-search.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AdminModule } from './admin/admin.module';
     FaqsModule,
     QuestionsModule,
     AdminModule,
+    AiSearchModule,
   ],
 })
 export class AppModule {}
