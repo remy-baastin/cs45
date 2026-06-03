@@ -65,7 +65,7 @@ export class AdminService {
    * Suspends or restores a user account, logging the action for compliance audits.
    */
   async toggleUserBan(adminId: string, userId: string, reason: string) {
-    if (adminId === userId) {
+    if (adminId.toString() === userId.toString()) {
       throw new BadRequestException('Administrators cannot suspend their own profiles');
     }
 
