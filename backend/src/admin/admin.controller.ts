@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Req, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -104,5 +104,23 @@ export class AdminController {
   @ApiResponse({ status: 200, description: 'FAQ candidate deleted.' })
   async rejectFaq(@Req() req: any, @Param('id') id: string) {
     return this.adminService.rejectFaq(req.user._id, id);
+  }
+
+  @Roles('admin')
+  @Post('seed-faqs')
+  @ApiOperation({ summary: '[Admin] Seed FAQs from the default JSON file' })
+  @ApiResponse({ status: 201, description: 'FAQs seeded successfully.' })
+  async seedFaqs(@Req() req: any) {
+    // Read the file from the root directory
+    const fs = require('fs');
+    const path = require('path');
+    const faqPath = path.resolve(__dirname, '../../../vicharanashala_faq.json');
+    
+    if (!fs.existsSync(faqPath)) {
+      throw new BadRequestException('Seed file not found at ' + faqPath);
+    }
+
+    const faqData = JSON.parse(fs.readFileSync(faqPath, 'utf-8'));
+    return this.adminService.seedFaqs(req.user._id, faqData);
   }
 }

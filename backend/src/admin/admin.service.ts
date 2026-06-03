@@ -240,4 +240,40 @@ export class AdminService {
 
     return { success: true };
   }
+
+  /**
+   * Seeds the database with FAQs from a JSON file.
+   * This is a critical feature for populating the initial knowledge base.
+   */
+  async seedFaqs(adminId: string, faqData: any) {
+    if (!faqData || !faqData.entries) {
+      throw new BadRequestException('Invalid FAQ data format');
+    }
+
+    let count = 0;
+    for (const entry of faqData.entries) {
+      const existing = await this.faqModel.findOne({ question: entry.question });
+      if (!existing) {
+        const embedding = await this.aiService.generateEmbeddings(entry.question);
+        const newFaq = new this.faqModel({
+          question: entry.question,
+          answer: entry.answer,
+          embedding,
+          isGenerated: false,
+          approvedBy: adminId,
+        });
+        const saved = await newFaq.save();
+        
+        // Also register in VectorStore for immediate availability
+        await this.vectorStore.addDocument(saved._id.toString(), embedding, {
+          question: saved.question,
+          answer: saved.answer,
+        });
+        
+        count++;
+      }
+    }
+
+    return { seededCount: count };
+  }
 }

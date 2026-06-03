@@ -27,6 +27,14 @@ export class QuestionsController {
     return this.questionsService.getUserVotes(req.user._id);
   }
 
+  @Get('clusters')
+  @ApiOperation({ summary: 'Get community questions grouped into similarity clusters' })
+  @ApiQuery({ name: 'threshold', required: false, type: Number, description: 'Similarity threshold (default: 0.7)' })
+  @ApiResponse({ status: 200, description: 'Returns array of question clusters.' })
+  async getClusters(@Query('threshold') threshold?: number) {
+    return this.questionsService.getQuestionClusters(threshold || 0.7);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get full details of a specific question including its answers' })
   @ApiParam({ name: 'id', description: 'Question ID' })
