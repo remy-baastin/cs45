@@ -25,6 +25,14 @@ export class FaqsController {
     return this.faqsService.searchSimilarFaqs(body.query);
   }
 
+  @Post('smart-search')
+  @ApiOperation({ summary: 'Advanced Smart Search Routing (FAQ -> RAG -> LLM)' })
+  @ApiBody({ schema: { example: { query: 'Can I take a break for a wedding?' } } })
+  @ApiResponse({ status: 200, description: 'Returns best match with routing information.' })
+  async smartSearch(@Body() body: { query: string }) {
+    return this.faqsService.smartSearch(body.query);
+  }
+
   @Post('feedback')
   @ApiOperation({ summary: 'Submit feedback on an FAQ (helpful or not)' })
   @ApiBody({
