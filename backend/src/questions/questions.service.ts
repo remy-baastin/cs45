@@ -334,7 +334,7 @@ export class QuestionsService {
       throw new NotFoundException('Question discussion not found');
     }
 
-    if (question.author.toString() !== userId) {
+    if (question.author.toString() !== userId.toString()) {
       throw new ForbiddenException('Only the question author can accept answers');
     }
 
