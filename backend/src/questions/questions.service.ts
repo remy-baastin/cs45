@@ -334,7 +334,7 @@ export class QuestionsService {
       throw new NotFoundException('Question discussion not found');
     }
 
-    if (question.author.toString() !== userId) {
+    if (question.author.toString() !== userId.toString()) {
       throw new ForbiddenException('Only the question author can accept answers');
     }
 
@@ -417,5 +417,75 @@ export class QuestionsService {
       acc[vote.targetId.toString()] = vote.value;
       return acc;
     }, {} as Record<string, number>);
+  }
+
+  /**
+   * Question Clustering Feature: Groups similar community discussions to organize the view.
+   * This identifies patterns and reduces redundancy in the community feed.
+   */
+  async getQuestionClusters(threshold: number = 0.7) {
+    const questions = await this.questionModel.find({
+      type: 'generic',
+      moderationStatus: 'approved',
+    }).select('title content embedding upvotes answerCount author createdAt')
+      .populate('author', 'name');
+
+    if (questions.length === 0) return [];
+
+    const clusters: any[] = [];
+    const processedIds = new Set<string>();
+
+    for (const q of questions) {
+      if (processedIds.has(q._id.toString())) continue;
+
+      const currentCluster = {
+        headline: q.title,
+        questions: [q],
+        totalUpvotes: q.upvotes || 0,
+        totalAnswers: q.answerCount || 0,
+      };
+
+      processedIds.add(q._id.toString());
+
+      for (const other of questions) {
+        if (processedIds.has(other._id.toString())) continue;
+
+        const similarity = this.calculateCosineSimilarity(
+          (q as any).embedding,
+          (other as any).embedding
+        );
+
+        if (similarity >= threshold) {
+          currentCluster.questions.push(other);
+          currentCluster.totalUpvotes += (other.upvotes || 0);
+          currentCluster.totalAnswers += (other.answerCount || 0);
+          processedIds.add(other._id.toString());
+        }
+      }
+
+      // Sort questions in cluster by upvotes
+      currentCluster.questions.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
+      // Use the most upvoted question as the headline
+      currentCluster.headline = currentCluster.questions[0].title;
+
+      clusters.push(currentCluster);
+    }
+
+    // Sort clusters by total activity (upvotes + answers)
+    return clusters.sort((a, b) => (b.totalUpvotes + b.totalAnswers) - (a.totalUpvotes + a.totalAnswers));
+  }
+
+  private calculateCosineSimilarity(v1: number[], v2: number[]): number {
+    if (!v1 || !v2 || v1.length !== v2.length || v1.length === 0) return 0;
+    let dotProduct = 0;
+    let norm1 = 0;
+    let norm2 = 0;
+    for (let i = 0; i < v1.length; i++) {
+      dotProduct += v1[i] * v2[i];
+      norm1 += v1[i] * v1[i];
+      norm2 += v2[i] * v2[i];
+    }
+    if (norm1 === 0 || norm2 === 0) return 0;
+    return dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
   }
 }
