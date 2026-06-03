@@ -11,8 +11,24 @@ export class Faq {
   @Prop({ required: true })
   answer: string;
 
-  @Prop({ type: [Number], required: true })
+  @Prop({ type: [Number], default: [] })
   embedding: number[];
+
+  @Prop({ default: 'general' })
+  category: string;
+
+  @Prop({ type: [String], default: [] })
+  tags: string[];
+
+  @Prop({ default: false })
+  embeddingReady: boolean;
+
+  @Prop({
+    type: String,
+    enum: ['draft', 'pending_review', 'published', 'archived'],
+    default: 'published',
+  })
+  status: string;
 
   @Prop({ default: false })
   isGenerated: boolean;
