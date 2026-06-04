@@ -1,6 +1,7 @@
 import { TagResult } from "../interfaces/tag.interface";
 import { GENERATE_TAGS_PROMPT } from "../prompts/generateTags.prompt";
 import { isValidTagResult } from "../validators/tag.validator";
+import { callMiniMax } from "../minimax/minimax.service";
 
 export async function generateTags(
   content: string
@@ -23,13 +24,11 @@ ${content}
     "Tag generation prompt built successfully."
   );
 
-  const response = `
-{
-  "tags": [
-    "general"
-  ]
-}
-`;
+  const response =
+  await callMiniMax(finalPrompt);
+
+console.log("Raw LLM Response:");
+console.log(response);
 
   const parsedResponse =
     JSON.parse(response);

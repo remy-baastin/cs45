@@ -1,6 +1,7 @@
 import { ModerationResult } from "../interfaces/moderation.interface";
 import { MODERATE_PROMPT } from "../prompts/moderate.prompt";
 import { isValidModeration } from "../validators/moderation.validator";
+import { callMiniMax } from "../minimax/minimax.service";
 
 export async function moderateQuery(
   query: string
@@ -19,14 +20,23 @@ ${query}
 
   console.log("Moderation prompt built successfully.");
 
-  const response = `
-{
-  "safe": true,
-  "reason": ""
-}
-`;
+  const response =
+  await callMiniMax(finalPrompt);
 
-  const parsedResponse = JSON.parse(response);
+console.log("Raw LLM Response:");
+console.log(response);
+
+  const cleanedResponse =
+  response
+    .replace(/```json\s*/gi, "")
+    .replace(/```/g, "")
+    .trim();
+
+console.log("Cleaned Response:");
+console.log(cleanedResponse);
+
+const parsedResponse =
+  JSON.parse(cleanedResponse);
 
   if (!isValidModeration(parsedResponse)) {
     throw new Error(

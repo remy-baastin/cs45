@@ -1,6 +1,7 @@
 import { FAQResult } from "../interfaces/faq.interface";
 import { GENERATE_FAQ_PROMPT } from "../prompts/generateFAQ.prompt";
 import { isValidFAQ } from "../validators/faq.validator";
+import { callMiniMax } from "../minimax/minimax.service";
 
 export async function generateFAQ(
   question: string,
@@ -33,14 +34,11 @@ ${answers.join("\n")}
     "FAQ generation prompt built successfully."
   );
 
-  const response = `
-{
-  "faqQuestion": "${question}",
-  "faqAnswer": "${answers[0]}",
-  "tags": ["general"],
-  "quality_score": 0.85
-}
-`;
+  const response =
+  await callMiniMax(finalPrompt);
+
+console.log("Raw LLM Response:");
+console.log(response);
 
   const parsedResponse =
     JSON.parse(response);

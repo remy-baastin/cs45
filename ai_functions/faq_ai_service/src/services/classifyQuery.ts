@@ -19,12 +19,12 @@ ${query}
 `;
 
   console.log("Classification prompt built successfully.");
-  const response = `
-{
-  "type": "generic",
-  "confidence": 0.95
-}
-`;
+  const response =
+  await callMiniMax(finalPrompt);
+
+  console.log("Raw LLM Response:");
+  console.log(response);
+
   const parsedResponse = JSON.parse(response);
 
   if (!isValidClassification(parsedResponse)) {
