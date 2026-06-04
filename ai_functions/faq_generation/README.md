@@ -27,7 +27,7 @@ Both sources go through the same quality pipeline: AI generation → schema vali
 | `knowledge-creation.service.ts` | Core service class — the main contribution. Contains all trigger logic, validation, tag normalization, quality review, and auto-approval |
 | `ai-service.interface.ts` | Interface contract defining what the AI service layer must provide (`IAIService`, `FAQOutput`, `QualityOutput`, `TagsOutput`) |
 | `zoom-transcription-processor.ts` | Extends `KnowledgeCreationService` to handle Zoom meeting transcript processing |
-| `run_pipeline.ts` | Development runner — simulates the community Q&A pipeline end-to-end using Samarpit's real AI functions |
+| `run_pipeline.ts` | Development runner — simulates the community Q&A pipeline end-to-end using the AI service module's AI functions |
 | `run_zoom_pipeline.ts` | Interactive CLI — manually test the Zoom transcript pipeline with sample or custom transcripts |
 | `package.json` | npm scripts to run the pipelines locally |
 | `tsconfig.json` | TypeScript compiler configuration |
@@ -56,7 +56,7 @@ npm run zoom        # Launch interactive Zoom transcript CLI
   answers          │     └─ fires only if answers >= 2    │
                     │                                     │
                     │  2. aiService.generateFAQ()          │ ──► IAIService
-                    │     └─ Samarpit's MiniMax call       │     (Samarpit)
+                    │     └─ MiniMax API call       │     (AI service module)
                     │                                     │
                     │  3. validateFAQSchema()              │
                     │     └─ checks all required fields    │
@@ -65,7 +65,7 @@ npm run zoom        # Launch interactive Zoom transcript CLI
                     │     └─ lowercase, dedup, 3-5 range   │
                     │                                     │
                     │  5. aiService.reviewFAQQuality()     │ ──► IAIService
-                    │     └─ scores 0.0 to 1.0            │     (Samarpit)
+                    │     └─ scores 0.0 to 1.0            │     (AI service module)
                     │                                     │
                     │  6. Auto-approval decision           │
                     │     score >= 0.70 → "published"     │
@@ -121,10 +121,10 @@ When a peer-answered question has enough answers (≥ 2), the AI **reframes** th
 This means admins only ever see FAQs that the AI could not confidently reframe — typically vague, contradictory, or incomplete answers. High-quality peer discussions go live automatically.
 
 ### Personal Query Routing
-When a question is classified as `type: personal` (by Vishal's classification layer), this module automatically appends an escalation disclaimer to the answer directing the user to raise a formal ticket rather than rely on a generic FAQ response.
+When a question is classified as `type: personal` (by query classification layer), this module automatically appends an escalation disclaimer to the answer directing the user to raise a formal ticket rather than rely on a generic FAQ response.
 
 ### IAIService Interface (ai-service.interface.ts)
-This file defines the contract between this module and the AI service layer (Samarpit's module). It specifies exactly what functions are required and what shape their responses must take. This decouples the two modules completely — this module does not care how Samarpit implements the AI calls, only that the response matches the interface.
+This file defines the contract between this module and the AI service layer (the AI service module). It specifies exactly what functions are required and what shape their responses must take. This decouples the two modules completely — this module does not care how AI service module implements the AI calls, only that the response matches the interface.
 
 ---
 
@@ -132,10 +132,10 @@ This file defines the contract between this module and the AI service layer (Sam
 
 | Dependency | From | What is needed |
 |---|---|---|
-| `generateFAQ()`, `generateTags()`, `reviewFAQQuality()` | **Samarpit** (faq_ai_service) | Real MiniMax API implementation of `IAIService` |
+| `generateFAQ()`, `generateTags()`, `reviewFAQQuality()` | **AI service module** (faq_ai_service) | Real MiniMax API implementation of `IAIService` |
 | Trigger hook on answer submission | **Backend team** | Call `processCommunityQuestion()` when `answerCount >= 2` |
 | Zoom transcript upload endpoint | **Backend team** | `POST /admin/process-transcript` calling `processZoomTranscription()` |
-| Question `type` field | **Vishal** (query_classification) | Each Question document must have `type: 'generic' \| 'personal'` set before this module runs |
+| Question `type` field | **query classification module** (query_classification) | Each Question document must have `type: 'generic' \| 'personal'` set before this module runs |
 
 ---
 
@@ -153,3 +153,4 @@ User submits answer     ──►   MongoDB Answer collection
                         { question, answer, tags, quality_score,
                           status, approved, type }
 ```
+

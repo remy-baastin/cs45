@@ -310,3 +310,4 @@ function printResults(results: FAQDocument[]) {
 // Start CLI
 showMenu();
 
+

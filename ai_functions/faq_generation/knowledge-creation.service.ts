@@ -1,4 +1,4 @@
-import { IAIService, FAQOutput, QualityOutput } from './samarpit-ai.interface';
+import { IAIService, FAQOutput, QualityOutput } from './ai-service.interface';
 
 export interface FAQDocument {
   faqQuestion: string;
@@ -12,7 +12,7 @@ export interface FAQDocument {
 }
 
 export class KnowledgeCreationService {
-  constructor(private readonly aiService: IAIService) {}
+  constructor(private readonly aiService: IAIService) { }
 
   /**
    * Task 24 & 25: Validates that the FAQ output matches the required schema.
@@ -35,7 +35,7 @@ export class KnowledgeCreationService {
     if (!tags) return [];
 
     // Convert to lowercase, trim, and replace spaces with hyphens for clean structure
-    const cleaned = tags.map(tag => 
+    const cleaned = tags.map(tag =>
       tag.toLowerCase().trim().replace(/\s+/g, '-')
     );
 
@@ -192,4 +192,5 @@ export class KnowledgeCreationService {
     return results;
   }
 }
+
 
