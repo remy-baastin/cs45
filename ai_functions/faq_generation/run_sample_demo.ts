@@ -8,7 +8,7 @@
  * Each phase is printed with a clear explanation of what is happening.
  */
 
-import { ISamarpitAIService, FAQOutput, TagsOutput, QualityOutput } from './samarpit-ai.interface';
+import { ISamarpitAIService, FAQOutput, TagsOutput, QualityOutput } from './ai-service.interface';
 import { KnowledgeCreationService } from './knowledge-creation.service';
 import { IZoomTranscriptionAIService, ZoomTranscriptionProcessor } from './zoom-transcription-processor';
 

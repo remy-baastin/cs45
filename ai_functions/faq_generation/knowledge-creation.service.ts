@@ -1,4 +1,4 @@
-import { ISamarpitAIService, FAQOutput, QualityOutput } from './samarpit-ai.interface';
+import { ISamarpitAIService, FAQOutput, QualityOutput } from './ai-service.interface';
 
 export interface FAQDocument {
   faqQuestion: string;

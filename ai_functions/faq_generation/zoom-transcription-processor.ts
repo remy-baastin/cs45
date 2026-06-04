@@ -1,4 +1,4 @@
-import { ISamarpitAIService, FAQOutput } from './samarpit-ai.interface';
+import { ISamarpitAIService, FAQOutput } from './ai-service.interface';
 import { KnowledgeCreationService, FAQDocument } from './knowledge-creation.service';
 
 /**

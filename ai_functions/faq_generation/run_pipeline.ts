@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { ISamarpitAIService, FAQOutput, TagsOutput, QualityOutput } from './samarpit-ai.interface';
+import { ISamarpitAIService, FAQOutput, TagsOutput, QualityOutput } from './ai-service.interface';
 import { KnowledgeCreationService, FAQDocument } from './knowledge-creation.service';
 
 // ─── Real Samarpit AI Service Adapter ────────────────────────────────────────
