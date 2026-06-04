@@ -1,6 +1,7 @@
 import { ReviewResult } from "../interfaces/review.interface";
 import { REVIEW_FAQ_PROMPT } from "../prompts/reviewFAQQuality.prompt";
 import { isValidReview } from "../validators/review.validator";
+import { callMiniMax } from "../minimax/minimax.service";
 
 export async function reviewFAQQuality(
   faqQuestion: string,
@@ -33,13 +34,11 @@ ${faqAnswer}
     "FAQ review prompt built successfully."
   );
 
-  const response = `
-{
-  "approved": true,
-  "score": 0.85,
-  "issues": []
-}
-`;
+  const response =
+  await callMiniMax(finalPrompt);
+
+console.log("Raw LLM Response:");
+console.log(response);
 
   const parsedResponse =
     JSON.parse(response);
