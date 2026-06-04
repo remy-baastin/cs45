@@ -106,12 +106,19 @@ npm run zoom        # Launch interactive Zoom transcript CLI
 
 ## Key Design Decisions
 
-### Trigger Rules
-- **Generic questions** — fire as soon as **1 peer answer** exists. A single community answer is enough to reframe into a polished, professional FAQ. The AI service handles the quality lift.
-- **Personal questions** — **never auto-generated**. These are questions involving billing, personal data, or sensitive account issues. They are routed directly to an admin for individual resolution and are never published as public FAQs.
+### Trigger Threshold: ≥ 2 Answers
+The FAQ generation only fires when a question has at least 2 community answers. This ensures the AI has enough signal to synthesize a high-quality response and prevents single-opinion answers from being published as official FAQs.
 
-### Auto-Approval at 0.70
-The quality review returns a score from 0.0 to 1.0. Any FAQ scoring 0.70 or above is automatically published. Below 0.70, it is flagged as `pending_review` for a human admin to check. This threshold was chosen to balance automation speed with quality assurance.
+### Auto-Approval at 0.70 — Reframe First, Validate Only If Needed
+
+When a peer-answered question has enough answers (≥ 2), the AI **reframes** the raw answers into a clean, professional FAQ. The quality review then scores this reframed output:
+
+| Score | Meaning | Action |
+|---|---|---|
+| **≥ 0.70** | AI reframing produced a high-quality FAQ | Published **automatically** — no admin needed |
+| **< 0.70** | AI reframing needs human correction | Sent to **admin queue** (`pending_review`) for review before publishing |
+
+This means admins only ever see FAQs that the AI could not confidently reframe — typically vague, contradictory, or incomplete answers. High-quality peer discussions go live automatically.
 
 ### Personal Query Routing
 When a question is classified as `type: personal` (by Vishal's classification layer), this module automatically appends an escalation disclaimer to the answer directing the user to raise a formal ticket rather than rely on a generic FAQ response.
