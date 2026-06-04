@@ -1,0 +1,17 @@
+{
+  "name": "vins-faq-generation",
+  "version": "1.0.0",
+  "description": "AI Member 4 (Negha) — Knowledge Creation & FAQ Generation Layer for the VINS Crowd-Sourced FAQ Platform",
+  "author": "Negha (AI Member 4)",
+  "main": "knowledge-creation.service.ts",
+  "scripts": {
+    "pipeline": "ts-node run_pipeline.ts",
+    "zoom": "ts-node run_zoom_pipeline.ts",
+    "demo": "ts-node run_sample_demo.ts"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.0"
+  }
+}
