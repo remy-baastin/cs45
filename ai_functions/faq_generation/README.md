@@ -106,8 +106,9 @@ npm run zoom        # Launch interactive Zoom transcript CLI
 
 ## Key Design Decisions
 
-### Trigger Threshold: ≥ 2 Answers
-The FAQ generation only fires when a question has at least 2 community answers. This ensures the AI has enough signal to synthesize a high-quality response and prevents single-opinion answers from being published as official FAQs.
+### Trigger Rules
+- **Generic questions** — fire as soon as **1 peer answer** exists. A single community answer is enough to reframe into a polished, professional FAQ. The AI service handles the quality lift.
+- **Personal questions** — **never auto-generated**. These are questions involving billing, personal data, or sensitive account issues. They are routed directly to an admin for individual resolution and are never published as public FAQs.
 
 ### Auto-Approval at 0.70
 The quality review returns a score from 0.0 to 1.0. Any FAQ scoring 0.70 or above is automatically published. Below 0.70, it is flagged as `pending_review` for a human admin to check. This threshold was chosen to balance automation speed with quality assurance.
