@@ -1,0 +1,539 @@
+// API-connected store with subscribe pattern.
+import { faqs as localFaqs } from "@/data/faqs";
+
+const LS_AUTH = "yaksha.auth.v1";
+const LS_TOKEN = "yaksha.token.v1";
+const LS_MY_QUERIES = "yaksha.my_query_ids.v1";
+const LS_REJECTED_QUERIES = "yaksha.rejected_query_ids.v1";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+let state = {
+  queries: [],
+  threads: [],
+  answers: [],
+  notifications: [],
+  faqs: localFaqs.map((f, i) => ({ id: "faq-" + i, section: f.section || "General", q: f.q, a: f.a })),
+};
+
+const listeners = new Set();
+const emit = () => {
+  listeners.forEach((l) => l(state));
+};
+
+// Internal API helpers
+export const getAuth = () => {
+  try {
+    return JSON.parse(localStorage.getItem(LS_AUTH));
+  } catch {
+    return null;
+  }
+};
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem(LS_TOKEN);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const loadCommunityQuestions = async () => {
+  try {
+    const res = await fetch(`${API_URL}/api/questions`);
+    if (!res.ok) return [];
+    const list = await res.json();
+    return list.map((q) => ({
+      id: q._id,
+      title: q.title,
+      body: q.content,
+      author: q.author?.name ? `@${q.author.name.toLowerCase().replace(/\s+/g, "")}` : "@anonymous",
+      tag: q.type === "personal" ? "Private" : "General",
+      upvotes: q.upvotes || 0,
+      createdAt: new Date(q.createdAt).getTime(),
+      answerCount: q.answerCount || 0,
+    }));
+  } catch (e) {
+    console.error("Error loading community questions:", e);
+    return [];
+  }
+};
+
+const loadMyQueries = async () => {
+  const token = localStorage.getItem(LS_TOKEN);
+  if (!token) return [];
+
+  let localIds = [];
+  try {
+    const raw = localStorage.getItem(LS_MY_QUERIES);
+    if (raw) localIds = JSON.parse(raw);
+  } catch {}
+
+  let rejectedIds = [];
+  try {
+    const raw = localStorage.getItem(LS_REJECTED_QUERIES);
+    if (raw) rejectedIds = JSON.parse(raw);
+  } catch {}
+
+  const queries = [];
+  const promises = localIds.map(async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/api/questions/${id}`, {
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // data contains { question, answers }
+        const q = data.question;
+        const acceptedAnswer = data.answers.find((a) => a.isAccepted);
+        const isRejected = rejectedIds.includes(q._id);
+        queries.push({
+          id: q._id,
+          user: getAuth(),
+          title: q.title,
+          body: q.content,
+          route: q.type,
+          status: isRejected ? "rejected" : (q.isClosed ? "answered" : q.moderationStatus),
+          warnings: 0,
+          flagged: q.isModerated || false,
+          adminReply: acceptedAnswer ? acceptedAnswer.content : "",
+          aiAnswer: acceptedAnswer ? acceptedAnswer.content : "",
+          createdAt: new Date(q.createdAt).getTime(),
+        });
+      }
+    } catch (e) {
+      console.error(`Error loading personal query ${id}:`, e);
+    }
+  });
+
+  await Promise.allSettled(promises);
+  return queries;
+};
+
+export const refreshData = async () => {
+  try {
+    const token = localStorage.getItem(LS_TOKEN);
+    const user = getAuth();
+
+    const [faqsData, threads, notificationsData] = await Promise.all([
+      fetch(`${API_URL}/api/faqs`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      loadCommunityQuestions(),
+      token
+        ? fetch(`${API_URL}/api/users/notifications`, { headers: getAuthHeaders() })
+            .then((r) => (r.ok ? r.json() : []))
+            .catch(() => [])
+        : Promise.resolve([]),
+    ]);
+
+    const mappedFaqs = faqsData.length > 0
+      ? faqsData.map((f) => ({
+          id: f._id,
+          section: f.category || "General",
+          q: f.question,
+          a: f.answer,
+        }))
+      : state.faqs;
+
+    let myQueries = [];
+    if (user?.role === "admin") {
+      const res = await fetch(`${API_URL}/api/admin/moderation/personal`, {
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const list = await res.json();
+        let rejectedIds = [];
+        try {
+          const raw = localStorage.getItem(LS_REJECTED_QUERIES);
+          if (raw) rejectedIds = JSON.parse(raw);
+        } catch {}
+
+        myQueries = list.map((q) => {
+          const isRejected = rejectedIds.includes(q._id);
+          return {
+            id: q._id,
+            user: {
+              name: q.author?.name || "Student",
+              handle: q.author?.name ? "@" + q.author.name.toLowerCase().replace(/\s+/g, "") : "@student",
+              avatar: q.author?.name ? q.author.name.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase() : "ST",
+            },
+            title: q.title,
+            body: q.content,
+            route: q.type,
+            status: isRejected ? "rejected" : (q.isClosed ? "answered" : q.moderationStatus),
+            warnings: 0,
+            flagged: q.isModerated || false,
+            adminReply: "",
+            aiAnswer: "",
+            createdAt: new Date(q.createdAt).getTime(),
+          };
+        });
+      }
+    } else {
+      myQueries = await loadMyQueries();
+    }
+
+    // Map community queries authored by the user into the list if they are not already there
+    const communityQueriesWrittenByMe = threads
+      .filter((t) => user && t.author === user.handle)
+      .map((t) => ({
+        id: t.id,
+        user,
+        title: t.title,
+        body: t.body,
+        route: "community",
+        status: "approved",
+        warnings: 0,
+        flagged: false,
+        adminReply: "",
+        aiAnswer: "",
+        createdAt: t.createdAt,
+      }));
+
+    // Deduplicate and combine
+    const allUserQueries = [...myQueries];
+    for (const cq of communityQueriesWrittenByMe) {
+      if (!allUserQueries.some((uq) => uq.id === cq.id)) {
+        allUserQueries.push(cq);
+      }
+    }
+
+    state.queries = allUserQueries;
+    state.threads = threads;
+    state.faqs = mappedFaqs;
+    state.notifications = notificationsData;
+    emit();
+  } catch (e) {
+    console.error("Error refreshing data:", e);
+  }
+};
+
+// Fetch all questions and details on import
+refreshData();
+
+export const store = {
+  get: () => state,
+  subscribe: (fn) => {
+    listeners.add(fn);
+    return () => listeners.delete(fn);
+  },
+  reset: async () => {
+    localStorage.removeItem(LS_MY_QUERIES);
+    await refreshData();
+  },
+};
+
+// Queries
+export const addQuery = async (q) => {
+  const token = localStorage.getItem(LS_TOKEN);
+  const res = await fetch(`${API_URL}/api/questions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ title: q.title, content: q.body }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || "Failed to post query");
+  }
+  const data = await res.json();
+  const savedQuestion = data.question;
+
+  // Save the ID in local storage
+  let localIds = [];
+  try {
+    const raw = localStorage.getItem(LS_MY_QUERIES);
+    if (raw) localIds = JSON.parse(raw);
+  } catch {}
+  localIds.push(savedQuestion._id);
+  localStorage.setItem(LS_MY_QUERIES, JSON.stringify(localIds));
+
+  // Refresh data asynchronously
+  refreshData();
+
+  return {
+    id: savedQuestion._id,
+    route: savedQuestion.type,
+    status: savedQuestion.moderationStatus,
+    title: savedQuestion.title,
+    body: savedQuestion.content,
+  };
+};
+
+export const updateQuery = async (id, patch) => {
+  const token = localStorage.getItem(LS_TOKEN);
+
+  if (patch.adminReply) {
+    const res = await fetch(`${API_URL}/api/admin/moderation/personal/${id}/review`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ answerContent: patch.adminReply }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || "Failed to submit admin reply");
+    }
+  }
+
+  // Handle direct approvals (button clicks)
+  if (patch.status === "approved") {
+    const curQuery = state.queries.find((q) => q.id === id);
+    if (curQuery && curQuery.route === "personal" && curQuery.status === "pending") {
+      let answerContent = curQuery.adminFeedback || "Query approved by administrator.";
+      const res = await fetch(`${API_URL}/api/admin/moderation/personal/${id}/review`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ answerContent }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to approve query");
+      }
+    }
+  }
+
+  // Handle direct rejections (button clicks)
+  if (patch.status === "rejected") {
+    let rejectedIds = [];
+    try {
+      const raw = localStorage.getItem(LS_REJECTED_QUERIES);
+      if (raw) rejectedIds = JSON.parse(raw);
+    } catch {}
+    if (!rejectedIds.includes(id)) {
+      rejectedIds.push(id);
+      localStorage.setItem(LS_REJECTED_QUERIES, JSON.stringify(rejectedIds));
+    }
+  }
+
+  // Update locally to keep UI responsive
+  state.queries = state.queries.map((q) => (q.id === id ? { ...q, ...patch } : q));
+  emit();
+  
+  // Refresh backend state
+  refreshData();
+};
+
+export const decideAnswer = (id, status) => {
+  state.answers = state.answers.map((a) => (a.id === id ? { ...a, status } : a));
+  emit();
+};
+
+export const addAnswer = async (threadId, body, author = "@you") => {
+  const token = localStorage.getItem(LS_TOKEN);
+  const res = await fetch(`${API_URL}/api/questions/${threadId}/answers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ content: body }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || "Failed to submit answer");
+  }
+  const savedAnswer = await res.json();
+
+  // Fetch thread details to refresh answers list
+  await fetchQuestionDetails(threadId);
+  return savedAnswer;
+};
+
+// Fetch thread details + answers dynamically
+export const fetchQuestionDetails = async (questionId) => {
+  const token = localStorage.getItem(LS_TOKEN);
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  try {
+    const res = await fetch(`${API_URL}/api/questions/${questionId}`, { headers });
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const questionAnswers = data.answers.map((a) => ({
+      id: a._id,
+      threadId: questionId,
+      body: a.content,
+      status: a.isAccepted ? "approved" : "pending",
+      author: a.author?.name ? `@${a.author.name.toLowerCase().replace(/\s+/g, "")}` : "@mentor",
+      createdAt: new Date(a.createdAt).getTime(),
+    }));
+
+    state.answers = [
+      ...state.answers.filter((a) => a.threadId !== questionId),
+      ...questionAnswers,
+    ];
+    emit();
+  } catch (e) {
+    console.error("Error fetching question details:", e);
+  }
+};
+
+// AI answer generator (mocked locally)
+const SAMPLE_ANSWERS = [
+  "Thanks for reaching out. Per current campus policy, you can resolve this by contacting the relevant office (Admin Block, Room 12) between 10am–4pm with your ID card.",
+  "This is handled by the academic office. Submit a written request via your dashboard and you'll get a confirmation within 48 hours.",
+  "Please log a ticket from your dashboard with screenshots; our team typically responds within 2 working days.",
+  "Yes, this is permitted. Carry a copy of your ID and the approval email from your HOD when you visit the office.",
+  "No, this is not allowed under current rules. Please refer to section 4 of the student handbook for the alternative process.",
+];
+
+export const generateAIAnswer = (query) => {
+  const i = Math.abs(hash(query.title)) % SAMPLE_ANSWERS.length;
+  return `Hi ${query.user.name.split(" ")[0]} — ${SAMPLE_ANSWERS[i]}`;
+};
+
+const hash = (s) => {
+  let h = 0;
+  for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0;
+  return h;
+};
+
+// Cosine Similarity FAQ Search from backend
+let lastQuery = "";
+let lastMatches = [];
+let searchTimeout = null;
+
+export const searchFaqs = (query) => {
+  if (!query || !query.trim()) return [];
+
+  if (query !== lastQuery) {
+    lastQuery = query;
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/faqs/search`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          lastMatches = (data.suggestions || []).map((s) => ({
+            id: s.faqId,
+            q: s.question,
+            a: s.answer,
+            match: Math.round(s.score * 100),
+            section: "Search Match",
+          }));
+          emit();
+        }
+      } catch (e) {
+        console.error("Error searching FAQs:", e);
+      }
+    }, 300);
+  }
+
+  return lastMatches;
+};
+
+// Auth
+
+const authListeners = new Set();
+export const onAuthChange = (fn) => {
+  authListeners.add(fn);
+  return () => authListeners.delete(fn);
+};
+const emitAuth = () => authListeners.forEach((l) => l(getAuth()));
+
+export const signIn = async ({ email, password, isAdmin = false }) => {
+  if (!email || !password) throw new Error("Email and password required");
+
+  const res = await fetch(`${API_URL}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, passwordHash: password }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || "Invalid credentials");
+  }
+
+  const data = await res.json();
+  localStorage.setItem(LS_TOKEN, data.access_token);
+
+  const user = {
+    ...data.user,
+    handle: "@" + data.user.name.toLowerCase().replace(/\s+/g, ""),
+    avatar: data.user.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase(),
+    sp: data.user.reputationPoints || 10,
+  };
+
+  localStorage.setItem(LS_AUTH, JSON.stringify(user));
+  emitAuth();
+  await refreshData();
+  return user;
+};
+
+export const signUp = async ({ email, password, name }) => {
+  if (!email || !password || !name) throw new Error("All fields are required");
+
+  const res = await fetch(`${API_URL}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, passwordHash: password, name }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || "Registration failed");
+  }
+
+  const data = await res.json();
+  localStorage.setItem(LS_TOKEN, data.access_token);
+
+  const user = {
+    ...data.user,
+    handle: "@" + data.user.name.toLowerCase().replace(/\s+/g, ""),
+    avatar: data.user.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase(),
+    sp: data.user.reputationPoints || 10,
+  };
+
+  localStorage.setItem(LS_AUTH, JSON.stringify(user));
+  emitAuth();
+  await refreshData();
+  return user;
+};
+
+export const signOut = () => {
+  localStorage.removeItem(LS_AUTH);
+  localStorage.removeItem(LS_TOKEN);
+  emitAuth();
+  refreshData();
+};
+
+export const voteQuestion = async (questionId, value) => {
+  const token = localStorage.getItem(LS_TOKEN);
+  const res = await fetch(`${API_URL}/api/questions/${questionId}/vote`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ value }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || "Failed to vote");
+  }
+  await refreshData();
+};
+
+export const markNotificationRead = async (id) => {
+  const token = localStorage.getItem(LS_TOKEN);
+  const res = await fetch(`${API_URL}/api/users/notifications/${id}/read`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (res.ok) {
+    state.notifications = state.notifications.map((n) =>
+      n._id === id ? { ...n, isRead: true } : n
+    );
+    emit();
+  }
+};
